@@ -1,0 +1,65 @@
+version: '3.4'
+services:
+  elasticsearch:
+    build:
+      context: elasticsearch
+      args:
+        VERSION: ${ELK_VERSION}
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      discovery.type: single-node
+      # ELASTIC_PASSWORD: elmasterpwd
+    # ulimits:
+    #   memlock:
+    #     soft: -1
+    #     hard: -1
+    ports:
+      - 9200:9200
+      - 9300:9300
+    volumes:
+      - ./elasticsearch/data:/usr/share/elasticsearch/data
+      - ./elasticsearch/config/master_elastic.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./elasticsearch/logs:/usr/share/elasticsearch/logs/
+    networks:
+      - elastic
+
+
+  kibana:
+    build:
+      context: kibana
+      args:
+        VERSION: ${ELK_VERSION}
+    container_name: m_kib_01
+    ports:
+      - 5601:5601
+    volumes:
+      - ./kibana/config/master_kibana.yml:/usr/share/kibana/config/kibana.yml
+    networks:
+      - elastic
+    depends_on:
+      - elasticsearch
+
+
+  logstash:
+    build:
+      context: logstash
+      args:
+        VERSION: ${ELK_VERSION}
+    ports:
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - 9600:9600
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elastic
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+      - ./logstash/logs:/usr/share/logstash/logs
+      - ./logstash/config/master_logstash.yml:/usr/share/logstash/config/logstash.yml
+    depends_on:
+      - elasticsearch
+
+networks:
+  elastic:
+    driver: bridge
